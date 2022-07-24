@@ -1,2 +1,2 @@
 # APOD
-My C# Microsoft Store Published Application
+Microsoft Store Published A.i.POD Application. Featuring NASA's astronomy image of the day.
