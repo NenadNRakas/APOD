@@ -20,7 +20,7 @@
           LostFocus="Grid_LostFocus" BorderBrush="White" BorderThickness="0,2,0,0">
         <CalendarDatePicker x:Name="MonthCalendar" 
                             Margin="10,88,0,0" 
-                            VerticalAlignment="Top" 
+                            VerticalAlignment="Top"
                             DateChanged="MonthCalendar_DateChanged" 
                             BorderBrush="White" 
                             Background="RoyalBlue" 
@@ -63,7 +63,7 @@
                    HorizontalTextAlignment="Justify" 
                    HorizontalAlignment="Left" 
                    Width="169"
-                   ToolTipService.ToolTip="Daily limit of 50 images, that you can keep track of in the Windows Timeline!"/>
+                   ToolTipService.ToolTip="Daily limit of 33 images, that you can keep track of in the Windows Timeline!"/>
         <TextBox x:Name="ImagesTodayTextBox" 
                  Margin="184,199,0,0" 
                  Text="" 
@@ -126,6 +126,18 @@
                  BorderBrush="#FFFCF7F7"
                  ToolTipService.ToolTip="Educational explanation of the event presented in the media!" HorizontalAlignment="Left" Width="240"
          />
+        <TextBox x:Name="UpdateTextBlock" Margin="10,0,1252,533" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" FontSize="13" BorderBrush="Azure" BorderThickness="3" Text="Update Status" Height="30" Background="DarkBlue"/>
+        <StackPanel x:Name="LayoutRoot" Background="RoyalBlue" Visibility="Collapsed">
+            <StackPanel BorderBrush="Black" BorderThickness="4" Padding="12">
+                <TextBlock Text="Value-Based Progress Bar"/>
+                <ProgressBar x:Name="progressBar1" Value="0" Maximum="200"/>
+                <RepeatButton Content="Press and hold" Click="RepeatButton_Click"/>
+            </StackPanel>
+            <StackPanel BorderThickness="4" BorderBrush="Black" Padding="12">
+                <TextBlock Text="Indeterminate Progress Bar"/>
+                <ProgressBar IsIndeterminate="True" Margin="0,12"/>
+            </StackPanel>
+        </StackPanel>
         <Border x:Name="PictureBorder" 
                 BorderBrush="White" 
                 Margin="260,10,10,10" 
