@@ -1,6 +1,7 @@
 ﻿using AdaptiveCards;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Threading;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,10 +11,14 @@ using System.Runtime;
 using System.Runtime.Serialization;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
+using System.Windows;
 using Windows.ApplicationModel.UserActivities;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Services.Store;
 using Windows.Storage;
+using Windows.System.Display;
+using Windows.UI;
 using Windows.UI.Shell;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -31,32 +36,55 @@ namespace APOD
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        // A count of images downloaded today.
+        private int imageCountToday;
         // Settings name strings, used to preserve UI values between sessions.
+        const string SettingUpdateInstall = "1";
+        const string SettingSelectedDate = "2022, 06, 19";
         const string SettingDateToday = "date today";
         const string SettingShowOnStartup = "show on startup";
         const string SettingImageCountToday = "image count today";
         const string SettingLimitRange = "limit range";
-        // Declare a container for the local settings.
-        ApplicationDataContainer localSettings;
         // The objective of the NASA API portal is to make NASA data, including imagery, eminently accessible to application developers. 
         const string EndpointURL = "https://api.nasa.gov/planetary/apod";
         // The objective of the NASA API portal is to make NASA data, including imagery, eminently accessible to application developers. 
         const string DesignerURL = "https://aicloudptyltd.business.site";
-        // June 16, 1995  : the APOD launch date.
-        DateTime launchDate = new DateTime(1995, 6, 16);
-        // A count of images downloaded today.
-        private int imageCountToday;
         // Application settings status
         private string imageAutoLoad = "Yes";
+        private static bool ImageLoaded = false;
+        private static bool Status = false;
+        private static bool UpdateProcessing = false;
+        private static bool UpdateDownloading = false;
+        private static bool UpdatePending = false;
+        private static bool UpdateInstalling = false;
+        // Selected date
+        private static string selectedDate;
+        Object todayObject;
+        // Declare a container for the local settings.
+        ApplicationDataContainer localSettings;
+        // June 16, 1995  : the APOD launch date.
+        DateTime launchDate = new DateTime(1995, 6, 16);
         // To support the Timeline, we need to record user activity, and create an Adaptive Card.
         UserActivitySession _currentActivity;
         AdaptiveCard apodTimelineCard;
+        private ApplicationDataContainer GetLocalSettings()
+        {
+            return localSettings;
+        }
         private void ReadSettings()
         {
+            // Software Update Object
+            Object SUI = localSettings.Values[SettingUpdateInstall];
+            if (SUI != null)
+            {
+                bool InstallUpdateSetting = bool.Parse((string)SUI.ToString());
+                if (InstallUpdateSetting.Equals(true)) { UpdateInstalling = true; }
+            }
+            else UpdateInstalling = false;
             // If the app is being started the same day that it was run previously, then the images downloaded today count
             // needs to be set to the stored setting. Otherwise it should be zero.
             bool isToday = false;
-            Object todayObject = localSettings.Values[SettingDateToday];
+            todayObject = localSettings.Values[SettingDateToday];
             if (todayObject != null)
             {
                 // First check to see if this is the same day as the previous run of the app.
@@ -99,9 +127,35 @@ namespace APOD
                 LimitRangeCheckBox.IsChecked = false;
             }
             // Show today's image if the check box requires it.
+            if (localSettings.Values[SettingSelectedDate] == null)
+            {
+                localSettings.Values[SettingSelectedDate] = SettingSelectedDate;
+            }
+            DateTime dateTime = DateTime.Parse((string)localSettings.Values[SettingSelectedDate].ToString());
             if (ShowTodaysImageCheckBox.IsChecked == true)
             {
-                MonthCalendar.Date = DateTime.Today;
+                switch (UpdateInstalling)
+                {
+                    case true:
+                        MonthCalendar.Date = dateTime.Date;
+                        UpdateInstalling = false;
+                        break;
+                    case false:
+                        MonthCalendar.Date = DateTime.Today;
+                        break;
+                }
+            }
+            else
+            {
+                switch (UpdateInstalling)
+                {
+                    case true:
+                        MonthCalendar.Date = dateTime.Date;
+                        UpdateInstalling = false;
+                        break;
+                    case false:
+                        break;
+                }
             }
         }
         public MainPage()
@@ -113,9 +167,11 @@ namespace APOD
             MonthCalendar.MinDate = launchDate;
             MonthCalendar.MaxDate = DateTime.Today;
             // Load saved settings.
-            ReadSettings();
+            ReadSettings(GetLocalSettings());
             // AdaptiveCards Call.
             SetupForTimelineAsync();
+            Task.Delay(TimeSpan.FromSeconds(63.63));
+            CheckForMandatoryUpdates();
         }
         private async void SetupForTimelineAsync()
         {
@@ -367,6 +423,88 @@ namespace APOD
                                       "different date in the drop down calendar menu. By deselecting the show on start up checkbox, you can save an " +
                                       "image when restarting the application. Hovering over elements will guide you with tooltip popups. " +
                                       "Credits: Special thank you to Microsoft and NASA.";
+        }
+        private async void GetEasyUpdates()
+        {
+            StoreContext updateManager = StoreContext.GetDefault();
+            IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+
+            if (updates.Count > 0)
+            {
+                IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> downloadOperation =
+                    updateManager.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
+                StorePackageUpdateResult result = await downloadOperation.AsTask();
+
+            }
+            UpdateProcessing = true;
+            if (UpdateProcessing) { UpdateTextBlock.Text = "Updates are Processing..."; UpdateProcessing = false; }
+
+        }
+        private async void DownloadUpdatesAsync()
+        {
+            StoreContext updateManager = StoreContext.GetDefault();
+            /*IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+            if (updates.Count > 0)
+            {
+                IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> downloadOperation =
+                    updateManager.RequestDownloadStorePackageUpdatesAsync(updates);
+
+                downloadOperation.Progress = async (asyncInfo, progress) =>
+                {
+                    // Show progress UI
+                    await downloadOperation.AsTask();
+                    TextBlock updateDownload = new TextBlock();
+                    UpdateTextBlock.Text = "Update Downloading...";
+                };
+                StorePackageUpdateResult result = await downloadOperation.AsTask();
+                if (result.OverallState == StorePackageUpdateState.Completed)
+                {
+                    // Update was downloaded, add logic to request install
+                    TextBlock updateDownload = new TextBlock();
+                    UpdateTextBlock.Text = "Update Pending...";
+                    UpdatePending = true;
+                    DialogUpdate();
+                }
+            }*/
+            DialogUpdate();
+            UpdateDownloading = true;
+            if (UpdateDownloading) { UpdateTextBlock.Text = "Updates Downloading..."; UpdateDownloading = false; }
+        }
+        private async void InstallUpdatesAsync()
+        {
+            StoreContext updateManager = StoreContext.GetDefault();
+            IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+            // Save app state here
+            //WriteSettings();
+            IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> installOperation 
+                = updateManager.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
+            StorePackageUpdateResult result = await installOperation.AsTask();
+            UpdateInstalling = true;
+            if (UpdateInstalling)
+            {
+                // App will terminate here
+                App.Current.Exit();
+            }
+            // Handle error cases here using StorePackageUpdateResult from above
+        }
+        private async void CheckForMandatoryUpdates(bool status)
+        {
+            StoreContext updateManager = StoreContext.GetDefault();
+            IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+            
+            if (updates.Count > 0)
+            {
+                foreach (StorePackageUpdate u in updates)
+                {
+                    if (u.Mandatory) 
+                    {
+                        CheckForMandatoryUpdates(true);
+                    }
+                }
+            }
+            DownloadUpdatesAsync();
+            UpdatePending = true;
+            CheckForMandatoryUpdates(false);
         }
     }
 }
