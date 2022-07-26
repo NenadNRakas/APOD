@@ -393,7 +393,7 @@ namespace APOD
             }
             else
             {
-                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually caused by exceeding the image download limit of " +
+                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. The message is usually caused by exceeding the image download limit of " +
                     "33 images per day In addition if the following error code is OK, then everything is in good health and you can continue tomorrow. Error Code: "
                     + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
             }
