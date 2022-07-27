@@ -48,6 +48,7 @@ namespace APOD
         const string EndpointURL = "https://api.nasa.gov/planetary/apod";
         // The objective of the NASA API portal is to make NASA data, including imagery, eminently accessible to application developers. 
         const string DesignerURL = "https://aicloudptyltd.business.site";
+        private const int imageDownloadLimit = 33;
         // A count of images downloaded today.
         private int imageCountToday;
         // Application settings status
@@ -85,7 +86,7 @@ namespace APOD
                 bool InstallUpdateSetting = bool.Parse((string)SUI.ToString());
                 if (InstallUpdateSetting.Equals(true)) { UpdateInstalling = true; }
             }
-            //else UpdateInstalling = false;
+            else { UpdateInstalling = false; }
             // If the app is being started the same day that it was run previously, then the images downloaded today count
             // needs to be set to the stored setting. Otherwise it should be zero.
             bool isToday = false;
@@ -154,7 +155,7 @@ namespace APOD
                         break;
                     case true:
                         MonthCalendar.Date = dateTime.Date;
-                        UpdateInstalling = false;
+                        //UpdateInstalling = false;
                         break;
                 }
             }
@@ -166,7 +167,7 @@ namespace APOD
                         break;
                     case true:
                         MonthCalendar.Date = dateTime.Date;
-                        UpdateInstalling = false;
+                        //UpdateInstalling = false;
                         break;
                 }
             }
@@ -186,6 +187,7 @@ namespace APOD
             // AdaptiveCards Call.
             SetupForTimelineAsync();
             //Task.Delay(TimeSpan.FromSeconds(63.63));
+            if (UpdateInstalling) { UpdateInstalling = false; }
             CheckForMandatoryUpdates();
             /*Task<bool> mandatoryUpdate = CheckForMandatoryUpdates();
             var timeDelay = Task.Run(async delegate { await Task.Delay(3333); _ = mandatoryUpdate; });
@@ -330,6 +332,7 @@ namespace APOD
         private async void DialogUpdate()
         {
             UpdateInstalling = true;
+            WriteSettings();
             ContentDialog updateDialog = new ContentDialog()
             {
                 Title = "Updates Required",
@@ -386,15 +389,15 @@ namespace APOD
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             // The critical call: sends a GET request with the appropriate parameters.
             HttpResponseMessage response = client.GetAsync(URLParams).Result;
-            if (imageCountToday <= 33)
+            if (imageCountToday < imageDownloadLimit)
             {
                 // Make Duplication clearing
                 _ = RetrievePhoto(GetImageCountToday());
             }
             else
             {
-                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. The message is usually caused by exceeding the image download limit of " +
-                    "33 images per day In addition if the following error code is OK, then everything is in good health and you can continue tomorrow. Error Code: "
+                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually caused by exceeding the image download limit of " +
+                    "33 images per day In addition if the following test error code is OK, then everything is in good health and you can continue tomorrow. Error Code: "
                     + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
             }
         }
@@ -638,7 +641,7 @@ namespace APOD
             if (UpdateInstalling)
             {
                 UpdateTextBlock.Text = "Restart Application...";
-                WriteSettings();
+                //WriteSettings();
                 App.Current.Exit();
 
             }
