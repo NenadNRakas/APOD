@@ -1,6 +1,7 @@
 ﻿using AdaptiveCards;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Threading;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,10 +11,14 @@ using System.Runtime;
 using System.Runtime.Serialization;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
+using System.Windows;
 using Windows.ApplicationModel.UserActivities;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Services.Store;
 using Windows.Storage;
+using Windows.System.Display;
+using Windows.UI;
 using Windows.UI.Shell;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -23,44 +28,62 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
-// The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 namespace APOD
 {
-    /// <summary>
-    /// An empty page that can be used on its own or navigated to within a Frame.
-    /// </summary>
     public sealed partial class MainPage : Page
     {
         // Settings name strings, used to preserve UI values between sessions.
+        const string SettingUpdateInstall = "1";
+        const string SettingSelectedDate = "2022, 06, 19";
         const string SettingDateToday = "date today";
         const string SettingShowOnStartup = "show on startup";
         const string SettingImageCountToday = "image count today";
         const string SettingLimitRange = "limit range";
-        // Declare a container for the local settings.
-        ApplicationDataContainer localSettings;
         // The objective of the NASA API portal is to make NASA data, including imagery, eminently accessible to application developers. 
         const string EndpointURL = "https://api.nasa.gov/planetary/apod";
         // The objective of the NASA API portal is to make NASA data, including imagery, eminently accessible to application developers. 
         const string DesignerURL = "https://aicloudptyltd.business.site";
-        // June 16, 1995  : the APOD launch date.
-        DateTime launchDate = new DateTime(1995, 6, 16);
+        private const int imageDownloadLimit = 9;
         // A count of images downloaded today.
         private int imageCountToday;
         // Application settings status
         private string imageAutoLoad = "Yes";
+        // Selected date
+        private static string selectedDate;
+        Object todayObject;
+        // Declare a container for the local settings.
+        ApplicationDataContainer localSettings;
         // To support the Timeline, we need to record user activity, and create an Adaptive Card.
+        // June 16, 1995  : the APOD launch date.
+        DateTime launchDate = new DateTime(1995, 6, 16);
+        //CalendarDatePicker dateTimeOffSet;
         UserActivitySession _currentActivity;
         AdaptiveCard apodTimelineCard;
-        private void ReadSettings()
+        private static bool ImageLoaded = false;
+        private static bool UpdateInstalling = false;
+        private static bool UpdateInAMin = false;
+        private ApplicationDataContainer GetLocalSettings()
         {
+            return localSettings;
+        }
+        private void ReadSettings(ApplicationDataContainer localSettings)
+        {
+            // Installation object status after restart
+            Object SUI = localSettings.Values[SettingUpdateInstall];
+            if (SUI != null)
+            {
+                bool InstallUpdateSetting = bool.Parse((string)SUI.ToString());
+                if(InstallUpdateSetting.Equals(true)) { UpdateInstalling = true; }
+            }
+            else { UpdateInstalling = false; }
             // If the app is being started the same day that it was run previously, then the images downloaded today count
             // needs to be set to the stored setting. Otherwise it should be zero.
             bool isToday = false;
-            Object todayObject = localSettings.Values[SettingDateToday];
+            todayObject = localSettings.Values[SettingDateToday];
             if (todayObject != null)
             {
                 // First check to see if this is the same day as the previous run of the app.
-                DateTime dt = DateTime.Parse((string)todayObject);
+                DateTime dt = DateTime.Parse((string)todayObject.ToString());
                 if (dt.Equals(DateTime.Today))
                 {
                     isToday = true;
@@ -98,10 +121,34 @@ namespace APOD
                 // Set the default.
                 LimitRangeCheckBox.IsChecked = false;
             }
-            // Show today's image if the check box requires it.
+            // Show today's image if the check box requires it or restore the state after an update.
+            if (localSettings.Values[SettingSelectedDate] == null)
+            {
+                localSettings.Values[SettingSelectedDate] = SettingSelectedDate;
+            }
+            DateTime dateTime = DateTime.Parse((string)localSettings.Values[SettingSelectedDate].ToString());
             if (ShowTodaysImageCheckBox.IsChecked == true)
             {
-                MonthCalendar.Date = DateTime.Today;
+                switch (UpdateInstalling)
+                {
+                    case false:
+                            MonthCalendar.Date = DateTime.Today;
+                        break;
+                    case true:
+                            MonthCalendar.Date = dateTime.Date;
+                        break;
+                }
+            }
+            else
+            {
+                switch(UpdateInstalling)
+                {
+                    case false:
+                        break;
+                    case true:
+                            MonthCalendar.Date = dateTime.Date;
+                        break;
+                }
             }
         }
         public MainPage()
@@ -113,9 +160,11 @@ namespace APOD
             MonthCalendar.MinDate = launchDate;
             MonthCalendar.MaxDate = DateTime.Today;
             // Load saved settings.
-            ReadSettings();
+            ReadSettings(GetLocalSettings());
             // AdaptiveCards Call.
             SetupForTimelineAsync();
+            if(UpdateInstalling) { UpdateInstalling = false; }
+            CheckForMandatoryUpdates();
         }
         private async void SetupForTimelineAsync()
         {
@@ -196,7 +245,7 @@ namespace APOD
             // The text here should be treated as a title for this activity, and should be unique to this app.
             UserActivity userActivity = await channel.GetOrCreateUserActivityAsync("APOD-UWP");
             // Populate required properties: DisplayText and ActivationUri are required.
-            userActivity.VisualElements.DisplayText = "[@.i.]™ POD Timeline activities";
+            userActivity.VisualElements.DisplayText = "A.i.POD Timeline activities";
             // The name in the ActivationUri must match the name in the protocol setting in the manifest file (except for the "://" part).
             userActivity.ActivationUri = new Uri("aicloud://");
             // Build the Adaptive Card from a JSON string.
@@ -243,8 +292,47 @@ namespace APOD
         }
         private void MonthCalendar_DateChanged(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
         {
-            // Make Duplication clearing
-            _ = RetrievePhoto();
+            // Build the date parameter string for the date selected, or the last date if a range is specified.
+            DateTimeOffset dt = (DateTimeOffset)MonthCalendar.Date;
+            selectedDate = $"{dt.Year.ToString()}-{dt.Month.ToString("00")}-{dt.Day.ToString("00")}";
+            string apiNasa = $"TZ6ay3nXkgGqVPMlWbrxYArpggcdyqSCjR7ZVeim";
+            string URLParams = $"?date={selectedDate}&api_key={apiNasa}";
+            var client = new HttpClient();
+            // Populate the Http client appropriately.
+            client.BaseAddress = new Uri(EndpointURL);
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            // The critical call: sends a GET request with the appropriate parameters.
+            HttpResponseMessage response = client.GetAsync(URLParams).Result;
+            if (imageCountToday < imageDownloadLimit)
+            {
+                // Make Duplication clearing
+                _ = RetrievePhoto(GetImageCountToday());
+            }
+            else
+            {
+                switch (UpdateInstalling)
+                {
+                    case false:
+                        DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually caused " +
+                            "by exceeding the image download limit of 33 images per day In addition if the following test error code is OK, " +
+                            "then everything is in good health and you can continue tomorrow. The NotFound would probably mean it's too early" +
+                            " and the service is still unavailable. Error Code: " + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
+                        break;
+                    case true:
+                        if (imageCountToday < imageDownloadLimit)
+                        {
+                            // Make Duplication clearing
+                            _ = RetrievePhoto(GetImageCountToday() - 1);
+                        }
+                        else
+                        {
+                            DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually caused by exceeding the image download limit of " +
+                                "33 images per day In addition if the following test error code is OK, then everything is in good health and you can continue tomorrow. Error Code: "
+                                + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
+                        }
+                        break;
+                }
+            }
         }
         private bool IsSupportedFormat(string photoURL)
         {
@@ -254,7 +342,11 @@ namespace APOD
             return (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" ||
                     ext == ".tif" || ext == ".bmp" || ext == ".ico" || ext == ".svg");
         }
-        private async Task RetrievePhoto()
+        private int GetImageCountToday()
+        {
+            return imageCountToday;
+        }
+        private async Task RetrievePhoto(int imageCount)
         {
             var client = new HttpClient();
             string description = null;
@@ -265,9 +357,9 @@ namespace APOD
             DescriptionTextBox.Text = " ";
             // Build the date parameter string for the date selected, or the last date if a range is specified.
             DateTimeOffset dt = (DateTimeOffset)MonthCalendar.Date;
-            string dateSelected = $"{dt.Year.ToString()}-{dt.Month.ToString("00")}-{dt.Day.ToString("00")}";
+            selectedDate = $"{dt.Year.ToString()}-{dt.Month.ToString("00")}-{dt.Day.ToString("00")}";
             string apiNasa = $"TZ6ay3nXkgGqVPMlWbrxYArpggcdyqSCjR7ZVeim";
-            string URLParams = $"?date={dateSelected}&api_key={apiNasa}";
+            string URLParams = $"?date={selectedDate}&api_key={apiNasa}";
             // Populate the Http client appropriately.
             client.BaseAddress = new Uri(EndpointURL);
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -321,13 +413,28 @@ namespace APOD
                     }
                     DescriptionTextBox.Text = description + $" Msg: {ex.Message}";
                 }
-                // Keep track of our downloads, in case we reach the limit.
-                ++imageCountToday;
+                switch (UpdateInstalling)
+                {
+                    case true:
+                        // Restore the normal application state.
+                        //UpdateInstalling = false;
+                        //GetImageCountToday();
+                        if (UpdateInAMin == false) { GetImageCountToday(); }
+                        if (UpdateInAMin == true) { ++imageCountToday; } //GetImageCountToday(); }
+                        break;
+                    case false:
+                        // Keep track of our downloads, in case we reach the limit.
+                        ++imageCountToday;
+                        break;
+                }
+                ImageLoaded = true;
+                // Refresh the coutn display.
                 ImagesTodayTextBox.Text = imageCountToday.ToString();
             }
             else
             {
-                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day: " +
+                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. Common issue is that it's too early in " +
+                    "the day. The other is network problems. Error Code: " +
                     $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
             }
             SetupForTimelineAsync();
@@ -337,13 +444,29 @@ namespace APOD
             WriteSettings();
             SetupForTimelineAsync();
         }
+        private void OnSuspending(object sender, SuspendingEventHandler e)
+        {
+            WriteSettings();
+            if (UpdateInstalling) { InstallUpdatesAsync(); }
+
+        }
         private void WriteSettings()
         {
             // Check and update the application settings status
             if (ShowTodaysImageCheckBox.IsChecked == true) { imageAutoLoad = "Yes"; };
             if (ShowTodaysImageCheckBox.IsChecked == false) { imageAutoLoad = "No"; };
             // Preserve the required UI settings in the local storage container.
-            localSettings.Values[SettingDateToday] = DateTime.Today.ToString();
+            switch (UpdateInstalling)
+            {
+                case true:
+                    if (ImageLoaded) { localSettings.Values[SettingSelectedDate] = MonthCalendar.Date.ToString(); }
+                    else { localSettings.Values[SettingSelectedDate] = SettingSelectedDate; }  //MonthCalendar.Date.ToString()
+                    break;
+                case false:
+                    localSettings.Values[SettingDateToday] = DateTime.Today.ToString();
+                    break;
+            }
+            localSettings.Values[SettingUpdateInstall] = UpdateInstalling.ToString();
             localSettings.Values[SettingShowOnStartup] = ShowTodaysImageCheckBox.IsChecked.ToString();
             localSettings.Values[SettingLimitRange] = LimitRangeCheckBox.IsChecked.ToString();
             localSettings.Values[SettingImageCountToday] = imageCountToday.ToString();
@@ -362,11 +485,109 @@ namespace APOD
                                          "by Nenad Rakas";
             // Add Description to TextBox
             DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day and count the " +
-                                      "daily limit of 50, that you can keep track of in the Timeline - which resets everyday! Use the Launch button " +
+                                      "daily limit of 33, that you can keep track of in the Timeline - which resets everyday! Use the Launch button " +
                                       "to take you back in time when the service first began. You will automatically receive an image by selecting a " +
                                       "different date in the drop down calendar menu. By deselecting the show on start up checkbox, you can save an " +
                                       "image when restarting the application. Hovering over elements will guide you with tooltip popups. " +
                                       "Credits: Special thank you to Microsoft and NASA.";
+        }
+        private async void DownloadUpdatesAsync()
+        {
+            StoreContext updateManager = StoreContext.GetDefault();
+            /*IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+            if (updates.Count > 0)
+            {
+                IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> downloadOperation =
+                    updateManager.RequestDownloadStorePackageUpdatesAsync(updates);
+
+                downloadOperation.Progress = async (asyncInfo, progress) =>
+                {
+                    // Show progress UI
+                    await downloadOperation.AsTask();
+                    TextBlock updateDownload = new TextBlock();
+                    UpdateTextBlock.Text = "Update Downloading...";
+                };
+                StorePackageUpdateResult result = await downloadOperation.AsTask();
+                if (result.OverallState == StorePackageUpdateState.Completed)
+                {
+                    // Update was downloaded, add logic to request install
+                    TextBlock updateDownload = new TextBlock();
+                    UpdateTextBlock.Text = "Update Pending...";
+                    UpdatePending = true;
+                    DialogUpdate();
+                }
+            }*/
+            DialogUpdate();
+        }
+        private async void CheckForMandatoryUpdates()
+        {
+            await Task.Delay(TimeSpan.FromSeconds(63.63));
+            UpdateInAMin = false;
+            StoreContext updateManager = StoreContext.GetDefault();
+            /*IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+            
+            if (updates.Count > 0) //updates.Count > 0
+            {
+                foreach (StorePackageUpdate u in updates)
+                {
+                    if (u.Mandatory) 
+                    {
+                        //return true;
+                    }
+                }
+            }*/
+            DownloadUpdatesAsync();
+            //return false;
+        }
+        private async void DialogUpdate()
+        {
+            UpdateInstalling = true;
+            WriteSettings();
+            ContentDialog updateDialog = new ContentDialog()
+            {
+                Title = "Updates Required",
+                Content = "Please be patient while it completes the process. Next time you start the application it will open where you left " +
+                "off (unless you've exceeded the daily image count) and won't cost you an additional image download. Should you choose to " +
+                "deliver it now the application will automatically close for the required update installation. Alternatively you can keep " +
+                "delaying it for a minute until you close the application manually in the top right corner of the window or change your choice " +
+                "to now on the next reminder. When it's done you can start the application again or shut down your system and continue next " +
+                "time where you left off.",
+                PrimaryButtonText = "In a min.",
+                SecondaryButtonText = "Now!",
+                DefaultButton = ContentDialogButton.Primary
+            };
+            var resultDialog = await updateDialog.ShowAsync();
+            if (resultDialog == ContentDialogResult.Primary)
+            {
+                UpdateInAMin = true;
+                await Task.Delay(TimeSpan.FromSeconds(63.63));
+                CheckForMandatoryUpdates();
+            }
+            if (resultDialog == ContentDialogResult.Secondary) { InstallUpdatesAsync(); } 
+        }
+        private void InstallUpdatesAsync()
+        {
+            //UpdateInAMin = false;
+            StoreContext updateManager = StoreContext.GetDefault();
+            /*IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+
+            // Save app state here
+            //WriteSettings();
+            
+
+            IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> installOperation =
+                updateManager.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
+
+            StorePackageUpdateResult result = await installOperation.AsTask();*/
+            //UpdateInstalling = true;
+            if (UpdateInstalling)
+            {
+                // Close the application
+                //WriteSettings();
+                App.Current.Exit();
+
+            }
+            // Handle error cases here using StorePackageUpdateResult from above
         }
     }
 }
