@@ -73,7 +73,7 @@ namespace APOD
             if (SUI != null)
             {
                 bool InstallUpdateSetting = bool.Parse((string)SUI.ToString());
-                if(InstallUpdateSetting.Equals(true)) { UpdateInstalling = true; }
+                if (InstallUpdateSetting.Equals(true)) { UpdateInstalling = true; }
             }
             else { UpdateInstalling = false; }
             // If the app is being started the same day that it was run previously, then the images downloaded today count
@@ -132,21 +132,21 @@ namespace APOD
                 switch (UpdateInstalling)
                 {
                     case false:
-                            MonthCalendar.Date = DateTime.Today;
+                        MonthCalendar.Date = DateTime.Today;
                         break;
                     case true:
-                            MonthCalendar.Date = dateTime.Date;
+                        MonthCalendar.Date = dateTime.Date;
                         break;
                 }
             }
             else
             {
-                switch(UpdateInstalling)
+                switch (UpdateInstalling)
                 {
                     case false:
                         break;
                     case true:
-                            MonthCalendar.Date = dateTime.Date;
+                        MonthCalendar.Date = dateTime.Date;
                         break;
                 }
             }
@@ -163,7 +163,7 @@ namespace APOD
             ReadSettings(GetLocalSettings());
             // AdaptiveCards Call.
             SetupForTimelineAsync();
-            if(UpdateInstalling) { UpdateInstalling = false; }
+            if (UpdateInstalling) { UpdateInstalling = false; }
             CheckForMandatoryUpdates();
         }
         private async void SetupForTimelineAsync()
@@ -265,19 +265,19 @@ namespace APOD
             // This will not load up the image, just sets the calendar to the APOD launch date.
             MonthCalendar.Date = launchDate;
         }
-        private void ShowTodaysImageCheckBox_OnChecked(object sender, RoutedEventArgs e) 
+        private void ShowTodaysImageCheckBox_OnChecked(object sender, RoutedEventArgs e)
         {
             // Update the settings and refresh the cards
             ShowTodaysImageCheckBox.IsChecked = true;
             imageAutoLoad = "Yes";
-            SetupForTimelineAsync(); 
+            SetupForTimelineAsync();
         }
         private void ShowTodaysImageCheckBox_OnUnchecked(object sender, RoutedEventArgs e)
         {
             // Update the settings and refresh the cards
             ShowTodaysImageCheckBox.IsChecked = false;
             imageAutoLoad = "No";
-            SetupForTimelineAsync(); 
+            SetupForTimelineAsync();
         }
         private void LimitRangeCheckBox_Checked(object sender, RoutedEventArgs e)
         {
@@ -563,7 +563,7 @@ namespace APOD
                 await Task.Delay(TimeSpan.FromSeconds(63.63));
                 CheckForMandatoryUpdates();
             }
-            if (resultDialog == ContentDialogResult.Secondary) { InstallUpdatesAsync(); } 
+            if (resultDialog == ContentDialogResult.Secondary) { InstallUpdatesAsync(); }
         }
         private void InstallUpdatesAsync()
         {
