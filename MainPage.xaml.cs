@@ -48,7 +48,7 @@ namespace APOD
         const string EndpointURL = "https://api.nasa.gov/planetary/apod";
         // The objective of the NASA API portal is to make NASA data, including imagery, eminently accessible to application developers. 
         const string DesignerURL = "https://aicloudptyltd.business.site";
-        private const int imageDownloadLimit = 33;
+        private const int imageDownloadLimit = 26;
         // A count of images downloaded today.
         private int imageCountToday;
         // Application settings status
@@ -336,11 +336,12 @@ namespace APOD
             ContentDialog updateDialog = new ContentDialog()
             {
                 Title = "Updates Required",
-                Content = "Please be patient while it completes the process. Next time you start the application it will open where you left off and " +
-                "won't cost you an additional image load count. Should you choose to deliver it now the application will automatically close for the " +
-                "required update installation. Alternatively you can keep delaying it for a minute until you close the application manually in the " +
-                "top right corner of the window or change your choice to now on the next reminder. When it's done you can start the application again " +
-                "or shut down your system and continue next time where you left off.",
+                Content = "Please be patient while it completes the process. Next time you start the application it will open where you left " +
+                "off (unless you've exceeded the daily image count) and won't cost you an additional image load count. Should you choose to " +
+                "deliver it now the application will automatically close for the required update installation. Alternatively you can keep " +
+                "delaying it for a minute until you close the application manually in the top right corner of the window or change your choice " +
+                "to now on the next reminder. When it's done you can start the application again or shut down your system and continue next " +
+                "time where you left off.",
                 PrimaryButtonText = "In a min.",
                 SecondaryButtonText = "Now!",
                 DefaultButton = ContentDialogButton.Primary
@@ -396,9 +397,28 @@ namespace APOD
             }
             else
             {
-                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually caused by exceeding the image download limit of " +
-                    "33 images per day In addition if the following test error code is OK, then everything is in good health and you can continue tomorrow. Error Code: "
-                    + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
+                switch (UpdateInstalling)
+                {
+                    case false:
+                        DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually caused " +
+                            "by exceeding the image download limit of 33 images per day In addition if the following test error code is OK, " +
+                            "then everything is in good health and you can continue tomorrow. The NotFound would probably mean it's too early" +
+                            " and the service is still unavailable. Error Code: " + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
+                        break;
+                    case true:
+                        if (imageCountToday < imageDownloadLimit)
+                        {
+                            // Make Duplication clearing
+                            _ = RetrievePhoto(GetImageCountToday() - 1);
+                        }
+                        else
+                        {
+                            DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually caused by exceeding the image download limit of " +
+                                "33 images per day In addition if the following test error code is OK, then everything is in good health and you can continue tomorrow. Error Code: "
+                                + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
+                        }
+                        break;
+                }
             }
         }
         private bool IsSupportedFormat(string photoURL)
