@@ -494,12 +494,11 @@ namespace APOD
         private async void DownloadUpdatesAsync()
         {
             StoreContext updateManager = StoreContext.GetDefault();
-            /*IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+            IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
             if (updates.Count > 0)
             {
                 IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> downloadOperation =
                     updateManager.RequestDownloadStorePackageUpdatesAsync(updates);
-
                 downloadOperation.Progress = async (asyncInfo, progress) =>
                 {
                     // Show progress UI
@@ -511,32 +510,29 @@ namespace APOD
                 if (result.OverallState == StorePackageUpdateState.Completed)
                 {
                     // Update was downloaded, add logic to request install
-                    TextBlock updateDownload = new TextBlock();
-                    UpdateTextBlock.Text = "Update Pending...";
-                    UpdatePending = true;
                     DialogUpdate();
                 }
-            }*/
-            DialogUpdate();
+            }
+            //DialogUpdate();
         }
         private async void CheckForMandatoryUpdates()
         {
             await Task.Delay(TimeSpan.FromSeconds(63.63));
             UpdateInAMin = false;
             StoreContext updateManager = StoreContext.GetDefault();
-            /*IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+            IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
             
-            if (updates.Count > 0) //updates.Count > 0
+            if (updates.Count > 0)
             {
                 foreach (StorePackageUpdate u in updates)
                 {
                     if (u.Mandatory) 
                     {
                         //return true;
+                        DownloadUpdatesAsync();
                     }
                 }
-            }*/
-            DownloadUpdatesAsync();
+            }
             //return false;
         }
         private async void DialogUpdate()
@@ -565,11 +561,11 @@ namespace APOD
             }
             if (resultDialog == ContentDialogResult.Secondary) { InstallUpdatesAsync(); }
         }
-        private void InstallUpdatesAsync()
+        private async void InstallUpdatesAsync()
         {
             //UpdateInAMin = false;
             StoreContext updateManager = StoreContext.GetDefault();
-            /*IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+            IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
 
             // Save app state here
             //WriteSettings();
@@ -578,7 +574,7 @@ namespace APOD
             IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> installOperation =
                 updateManager.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
 
-            StorePackageUpdateResult result = await installOperation.AsTask();*/
+            StorePackageUpdateResult result = await installOperation.AsTask();
             //UpdateInstalling = true;
             if (UpdateInstalling)
             {
