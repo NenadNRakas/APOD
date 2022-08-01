@@ -448,7 +448,6 @@ namespace APOD
         {
             WriteSettings();
             if (UpdateInstalling) { InstallUpdatesAsync(); }
-
         }
         private void WriteSettings()
         {
@@ -491,37 +490,13 @@ namespace APOD
                                       "image when restarting the application. Hovering over elements will guide you with tooltip popups. " +
                                       "Credits: Special thank you to Microsoft and NASA.";
         }
-        private async void DownloadUpdatesAsync()
-        {
-            StoreContext updateManager = StoreContext.GetDefault();
-            IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
-            if (updates.Count > 0)
-            {
-                IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> downloadOperation =
-                    updateManager.RequestDownloadStorePackageUpdatesAsync(updates);
-                downloadOperation.Progress = async (asyncInfo, progress) =>
-                {
-                    // Show progress UI
-                    await downloadOperation.AsTask();
-                    TextBlock updateDownload = new TextBlock();
-                    UpdateTextBlock.Text = "Update Downloading...";
-                };
-                StorePackageUpdateResult result = await downloadOperation.AsTask();
-                if (result.OverallState == StorePackageUpdateState.Completed)
-                {
-                    // Update was downloaded, add logic to request install
-                    DialogUpdate();
-                }
-            }
-            //DialogUpdate();
-        }
         private async void CheckForMandatoryUpdates()
         {
             await Task.Delay(TimeSpan.FromSeconds(63.63));
             UpdateInAMin = false;
+                        DownloadUpdatesAsync();
             StoreContext updateManager = StoreContext.GetDefault();
-            IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
-            
+            IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();            
             if (updates.Count > 0)
             {
                 foreach (StorePackageUpdate u in updates)
@@ -529,11 +504,32 @@ namespace APOD
                     if (u.Mandatory) 
                     {
                         //return true;
-                        DownloadUpdatesAsync();
                     }
                 }
             }
             //return false;
+        }
+        private async void DownloadUpdatesAsync()
+        {
+            StoreContext updateManager = StoreContext.GetDefault();
+            IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+            /*if (updates.Count > 0)
+            {
+                IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> downloadOperation =
+                    updateManager.RequestDownloadStorePackageUpdatesAsync(updates);
+                downloadOperation.Progress = async (asyncInfo, progress) =>
+                {
+                    // Show progress UI
+                    await downloadOperation.AsTask();
+                };
+                StorePackageUpdateResult result = await downloadOperation.AsTask();
+                if (result.OverallState == StorePackageUpdateState.Completed)
+                {
+                    // Update was downloaded, add logic to request install
+                    DialogUpdate();
+                }
+            }*/
+            DialogUpdate();
         }
         private async void DialogUpdate()
         {
@@ -543,11 +539,11 @@ namespace APOD
             {
                 Title = "Updates Required",
                 Content = "Please be patient while it completes the process. Next time you start the application it will open where you left " +
-                "off (unless you've exceeded the daily image count) and won't cost you an additional image download. Should you choose to " +
-                "deliver it now the application will automatically close for the required update installation. Alternatively you can keep " +
-                "delaying it for a minute until you close the application manually in the top right corner of the window or change your choice " +
-                "to now on the next reminder. When it's done you can start the application again or shut down your system and continue next " +
-                "time where you left off.",
+                "off (unless you've exceeded the daily image download count) and it won't cost you an additional image download. Should you " +
+                "choose to deliver it now the application will automatically close for the required update installation. Alternatively you " +
+                "can keep delaying it for a minute until you close the application manually in the top right corner of the window or change " +
+                "your choice to now on the next reminder. When it's done you can start the application again or shut down your system and " +
+                "continue next time where you left off.",
                 PrimaryButtonText = "In a min.",
                 SecondaryButtonText = "Now!",
                 DefaultButton = ContentDialogButton.Primary
@@ -557,7 +553,8 @@ namespace APOD
             {
                 UpdateInAMin = true;
                 await Task.Delay(TimeSpan.FromSeconds(63.63));
-                CheckForMandatoryUpdates();
+                //CheckForMandatoryUpdates();
+                DialogUpdate();
             }
             if (resultDialog == ContentDialogResult.Secondary) { InstallUpdatesAsync(); }
         }
@@ -566,24 +563,36 @@ namespace APOD
             //UpdateInAMin = false;
             StoreContext updateManager = StoreContext.GetDefault();
             IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
-
             // Save app state here
             //WriteSettings();
-            
-
             IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> installOperation =
-                updateManager.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
-
+                //updateManager.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
+                updateManager.TrySilentDownloadAndInstallStorePackageUpdatesAsync(updates);
             StorePackageUpdateResult result = await installOperation.AsTask();
             //UpdateInstalling = true;
             if (UpdateInstalling)
             {
                 // Close the application
                 //WriteSettings();
+                DialogExit();
                 App.Current.Exit();
-
             }
             // Handle error cases here using StorePackageUpdateResult from above
+        }
+        private async void DialogExit()
+        {
+            ContentDialog exitDialog = new ContentDialog()
+            {
+                Title = "Updates Required",
+                Content = "Good bye!",
+                PrimaryButtonText = "Close",
+                DefaultButton = ContentDialogButton.Primary
+            };
+            var resultDialog = await exitDialog.ShowAsync();
+            if (resultDialog == ContentDialogResult.Primary)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(3.3));
+            }
         }
     }
 }
