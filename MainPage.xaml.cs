@@ -329,37 +329,6 @@ namespace APOD
             Status = true;
             return isChecked;
         }
-        private async void DialogUpdate()
-        {
-            UpdateInstalling = true;
-            WriteSettings();
-            ContentDialog updateDialog = new ContentDialog()
-            {
-                Title = "Updates Required",
-                Content = "Please be patient while it completes the process. Next time you start the application it will open where you left " +
-                "off (unless you've exceeded the daily image count) and won't cost you an additional image load count. Should you choose to " +
-                "deliver it now the application will automatically close for the required update installation. Alternatively you can keep " +
-                "delaying it for a minute until you close the application manually in the top right corner of the window or change your choice " +
-                "to now on the next reminder. When it's done you can start the application again or shut down your system and continue next " +
-                "time where you left off.",
-                PrimaryButtonText = "In a min.",
-                SecondaryButtonText = "Now!",
-                DefaultButton = ContentDialogButton.Primary
-            };
-            var resultDialog = await updateDialog.ShowAsync();
-            if (resultDialog == ContentDialogResult.Primary)
-            {
-                UpdateInAMin = true;
-                TextBlock();
-                //UpdateInstalling = true;
-                await Task.Delay(TimeSpan.FromSeconds(63.63));
-                CheckForMandatoryUpdates();
-                //var timeDelay = Task.Run(async delegate { CheckForMandatoryUpdates(); Task.Delay(TimeSpan.FromSeconds(3.3)); });
-                //timeDelay.Wait();
-            }
-            if (resultDialog == ContentDialogResult.Secondary) { InstallUpdatesAsync(); } //UpdateInstalling = true;
-            //else if (resultDialog == ContentDialogResult.None){ CheckForMandatoryUpdates(); }
-        }
         private void LimitRangeCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             // Set the calendar minimum date to the first of the current year.
@@ -613,6 +582,31 @@ namespace APOD
             if (UpdateProcessing) { UpdateTextBlock.Text = "Updates are Processing..."; UpdateProcessing = false; }
 
         }
+        private async void CheckForMandatoryUpdates()
+        {
+            await Task.Delay(TimeSpan.FromSeconds(63.63));
+            UpdateInAMin = false;
+            StoreContext updateManager = StoreContext.GetDefault();
+            /*IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
+            
+            if (updates.Count > 0) //updates.Count > 0
+            {
+                foreach (StorePackageUpdate u in updates)
+                {
+                    if (u.Mandatory) 
+                    {
+                        //return true;
+                    } //return true;
+
+                    //UpdateTextBlock.Text = "Update Mandatory...";
+                }
+            }*/
+            DownloadUpdatesAsync();
+            // return false;*/
+            UpdatePending = true;
+            if (UpdatePending) { UpdateTextBlock.Text = "Update is Mandatory..."; UpdatePending = false; }
+            //return false;
+        }
         private async void DownloadUpdatesAsync()
         {
             StoreContext updateManager = StoreContext.GetDefault();
@@ -643,7 +637,39 @@ namespace APOD
             UpdateDownloading = true;
             if (UpdateDownloading) { UpdateTextBlock.Text = "Updates Downloading..."; UpdateDownloading = false; }
         }
-        private void InstallUpdatesAsync()
+        private async void DialogUpdate()
+        {
+            UpdateInstalling = true;
+            WriteSettings();
+            ContentDialog updateDialog = new ContentDialog()
+            {
+                Title = "Updates Required",
+                Content = "Please be patient while it completes the process. Next time you start the application it will open where you left " +
+                "off (unless you've exceeded the daily image download count) and it won't cost you an additional image download. Should you " +
+                "choose to deliver it now the application will automatically close for the required update installation. Alternatively you " +
+                "can keep delaying it for a minute until you close the application manually in the top right corner of the window or change " +
+                "your choice to now on the next reminder. When it's done you can start the application again or shut down your system and " +
+                "continue next time where you left off.",
+                PrimaryButtonText = "In a min.",
+                SecondaryButtonText = "Now!",
+                DefaultButton = ContentDialogButton.Primary
+            };
+            var resultDialog = await updateDialog.ShowAsync();
+            if (resultDialog == ContentDialogResult.Primary)
+            {
+                UpdateInAMin = true;
+                TextBlock();
+                //UpdateInstalling = true;
+                await Task.Delay(TimeSpan.FromSeconds(63.63));
+                //CheckForMandatoryUpdates();
+                DialogUpdate();
+                //var timeDelay = Task.Run(async delegate { CheckForMandatoryUpdates(); Task.Delay(TimeSpan.FromSeconds(3.3)); });
+                //timeDelay.Wait();
+            }
+            if (resultDialog == ContentDialogResult.Secondary) { InstallUpdatesAsync(); } //UpdateInstalling = true;
+            //else if (resultDialog == ContentDialogResult.None){ CheckForMandatoryUpdates(); }
+        }
+        private async void InstallUpdatesAsync()
         {
             //UpdateInAMin = false;
             StoreContext updateManager = StoreContext.GetDefault();
@@ -654,14 +680,16 @@ namespace APOD
             
 
             IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> installOperation =
-                updateManager.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
-
+                //updateManager.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
+                updateManager.TrySilentDownloadAndInstallStorePackageUpdatesAsync(updates);
             StorePackageUpdateResult result = await installOperation.AsTask();*/
             //UpdateInstalling = true;
             if (UpdateInstalling)
             {
                 UpdateTextBlock.Text = "Restart Application...";
                 //WriteSettings();
+                DialogExit();
+                await Task.Delay(TimeSpan.FromSeconds(21.3));
                 App.Current.Exit();
 
             }
@@ -669,30 +697,15 @@ namespace APOD
 
             // Handle error cases here using StorePackageUpdateResult from above
         }
-        private async void CheckForMandatoryUpdates()
+        private async void DialogExit()
         {
-            await Task.Delay(TimeSpan.FromSeconds(63.63));
-            UpdateInAMin = false;
-            StoreContext updateManager = StoreContext.GetDefault();
-            /*IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
-            
-            if (updates.Count > 0) //updates.Count > 0
+            ContentDialog exitDialog = new ContentDialog()
             {
-                foreach (StorePackageUpdate u in updates)
-                {
-                    if (u.Mandatory) 
-                    {
-                        //return true;
-                    } //return true;
-
-                    //UpdateTextBlock.Text = "Update Mandatory...";
-                }
-            }*/
-            DownloadUpdatesAsync();
-            // return false;*/
-            UpdatePending = true;
-            if (UpdatePending) { UpdateTextBlock.Text = "Update is Mandatory..."; UpdatePending = false; }
-            //return false;
+                Title = "Processing Updates",
+                Content = "The application will close shortly to complete the installation... This version carries the actual update feature " +
+                "and some small bug fixes. See you in a jiffy. Good bye..."
+            };
+            var resultDialog = await exitDialog.ShowAsync();
         }
     }
 }
