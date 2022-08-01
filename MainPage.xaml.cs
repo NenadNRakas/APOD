@@ -494,7 +494,6 @@ namespace APOD
         {
             await Task.Delay(TimeSpan.FromSeconds(63.63));
             UpdateInAMin = false;
-                        DownloadUpdatesAsync();
             StoreContext updateManager = StoreContext.GetDefault();
             IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();            
             if (updates.Count > 0)
@@ -503,6 +502,7 @@ namespace APOD
                 {
                     if (u.Mandatory) 
                     {
+                        DownloadUpdatesAsync();
                         //return true;
                     }
                 }
@@ -513,7 +513,7 @@ namespace APOD
         {
             StoreContext updateManager = StoreContext.GetDefault();
             IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
-            /*if (updates.Count > 0)
+            if (updates.Count > 0)
             {
                 IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> downloadOperation =
                     updateManager.RequestDownloadStorePackageUpdatesAsync(updates);
@@ -528,8 +528,8 @@ namespace APOD
                     // Update was downloaded, add logic to request install
                     DialogUpdate();
                 }
-            }*/
-            DialogUpdate();
+            }
+            //DialogUpdate();
         }
         private async void DialogUpdate()
         {
@@ -537,7 +537,7 @@ namespace APOD
             WriteSettings();
             ContentDialog updateDialog = new ContentDialog()
             {
-                Title = "Updates Required",
+                Title = "Required Updates",
                 Content = "Please be patient while it completes the process. Next time you start the application it will open where you left " +
                 "off (unless you've exceeded the daily image download count) and it won't cost you an additional image download. Should you " +
                 "choose to deliver it now the application will automatically close for the required update installation. Alternatively you " +
