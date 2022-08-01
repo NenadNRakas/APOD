@@ -575,6 +575,7 @@ namespace APOD
                 // Close the application
                 //WriteSettings();
                 DialogExit();
+                await Task.Delay(TimeSpan.FromSeconds(21.3));
                 App.Current.Exit();
             }
             // Handle error cases here using StorePackageUpdateResult from above
@@ -583,16 +584,11 @@ namespace APOD
         {
             ContentDialog exitDialog = new ContentDialog()
             {
-                Title = "Updates Required",
-                Content = "Good bye!",
-                PrimaryButtonText = "Close",
-                DefaultButton = ContentDialogButton.Primary
+                Title = "Processing Updates",
+                Content = "The application will close shortly to complete the installation... This version carries the actual update feature " +
+                "and some small bug fixes. See you in a jiffy. Good bye!"
             };
             var resultDialog = await exitDialog.ShowAsync();
-            if (resultDialog == ContentDialogResult.Primary)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(3.3));
-            }
         }
     }
 }
