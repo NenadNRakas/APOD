@@ -534,9 +534,9 @@ namespace APOD
             ContentDialog updateDialog = new ContentDialog()
             {
                 Title = "Required Updates",
-                Content = "Please be patient while it completes the process, it's mostly an automated process and the only cumbersome " +
-                "user requirement will be to decide when will you open the app again. Next time you start the application it will" +
-                " open where you left off (unless you've exceeded the daily image download count) and it won't cost you an additional " +
+                Content = "Please be patient while it completes the process, it's mostly automated and the only cumbersome " +
+                "user requirement will be to decide when will you open the app again. Next time you start the application it will " +
+                "open where you left off (unless you've exceeded the daily image download count) and it won't cost you an additional " +
                 "image download. Should you choose to deliver it now the application will close automatically for the required " +
                 "installation. Alternatively, you can keep delaying it for a minute until you close the application manually in the " +
                 "top right corner of the window or change your choice to now on the next reminder. Installation will be done by the " +
