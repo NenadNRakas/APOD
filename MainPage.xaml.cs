@@ -43,7 +43,7 @@ namespace APOD
         const string EndpointURL = "https://api.nasa.gov/planetary/apod";
         // The objective of the NASA API portal is to make NASA data, including imagery, eminently accessible to application developers. 
         const string DesignerURL = "https://aicloudptyltd.business.site";
-        private const int imageDownloadLimit = 9;
+        private const int imageDownloadLimit = 7;
         // A count of images downloaded today.
         private int imageCountToday;
         // Application settings status
@@ -481,7 +481,7 @@ namespace APOD
                                          "by Nenad Rakas";
             // Add Description to TextBox
             DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day and count the " +
-                                      "daily limit of 33, that you can keep track of in the Timeline - which resets everyday! Use the Launch button " +
+                                      "daily limit of 50, that you can keep track of in the Timeline - which resets everyday! Use the Launch button " +
                                       "to take you back in time when the service first began. You will automatically receive an image by selecting a " +
                                       "different date in the drop down calendar menu. By deselecting the show on start up checkbox, you can save an " +
                                       "image when restarting the application. Hovering over elements will guide you with tooltip popups. " +
@@ -503,6 +503,7 @@ namespace APOD
                     }
                 }
             }
+            DownloadUpdatesAsync(); // Only for testing.
         }
         private async void DownloadUpdatesAsync()
         {
@@ -524,6 +525,7 @@ namespace APOD
                     DialogUpdate();
                 }
             }
+            DialogUpdate(); // Only for testing.
         }
         private async void DialogUpdate()
         {
@@ -532,12 +534,14 @@ namespace APOD
             ContentDialog updateDialog = new ContentDialog()
             {
                 Title = "Required Updates",
-                Content = "Please be patient while it completes the process. Next time you start the application it will open where you left " +
-                "off (unless you've exceeded the daily image download count) and it won't cost you an additional image download. Should you " +
-                "choose to deliver it now the application will automatically close for the required update installation. Alternatively you " +
-                "can keep delaying it for a minute until you close the application manually in the top right corner of the window or change " +
-                "your choice to now on the next reminder. When it's done you can start the application again or shut down your system and " +
-                "continue next time where you left off.",
+                Content = "Please be patient while it completes the process, it's mostly an automated process and the only cumbersome " +
+                "user requirement will be to decide when will you open the app again. Next time you start the application it will" +
+                " open where you left off (unless you've exceeded the daily image download count) and it won't cost you an additional " +
+                "image download. Should you choose to deliver it now the application will close automatically for the required " +
+                "installation. Alternatively, you can keep delaying it for a minute until you close the application manually in the " +
+                "top right corner of the window or change your choice to now on the next reminder. Installation will be done by the " +
+                "time the application quits, you can then start the application again or shut down your system and continue next " +
+                "time where you left off. ",
                 PrimaryButtonText = "In a min.",
                 SecondaryButtonText = "Now!",
                 DefaultButton = ContentDialogButton.Primary
@@ -564,7 +568,7 @@ namespace APOD
             {
                 // Close the application
                 DialogExit();
-                await Task.Delay(TimeSpan.FromSeconds(21.3));
+                await Task.Delay(TimeSpan.FromSeconds(33.33));
                 App.Current.Exit();
             }
             // Handle error cases here using StorePackageUpdateResult from above
@@ -574,8 +578,8 @@ namespace APOD
             ContentDialog exitDialog = new ContentDialog()
             {
                 Title = "Processing Updates",
-                Content = "The application will close shortly to complete the installation... This version carries the actual update feature " +
-                "and some small bug fixes. See you in a jiffy. Good bye!"
+                Content = "The application will close shortly to complete the installation... This version carries an in app guided " +
+                "update feature and some small bug fixes. See you in a jiffy. Good bye!"
             };
             var resultDialog = await exitDialog.ShowAsync();
         }
