@@ -56,7 +56,6 @@ namespace APOD
         // To support the Timeline, we need to record user activity, and create an Adaptive Card.
         // June 16, 1995  : the APOD launch date.
         DateTime launchDate = new DateTime(1995, 6, 16);
-        //CalendarDatePicker dateTimeOffSet;
         UserActivitySession _currentActivity;
         AdaptiveCard apodTimelineCard;
         private static bool ImageLoaded = false;
@@ -417,8 +416,6 @@ namespace APOD
                 {
                     case true:
                         // Restore the normal application state.
-                        //UpdateInstalling = false;
-                        //GetImageCountToday();
                         if (UpdateInAMin == false) { GetImageCountToday(); }
                         if (UpdateInAMin == true) { ++imageCountToday; } //GetImageCountToday(); }
                         break;
@@ -503,11 +500,9 @@ namespace APOD
                     if (u.Mandatory) 
                     {
                         DownloadUpdatesAsync();
-                        //return true;
                     }
                 }
             }
-            //return false;
         }
         private async void DownloadUpdatesAsync()
         {
@@ -529,7 +524,6 @@ namespace APOD
                     DialogUpdate();
                 }
             }
-            //DialogUpdate();
         }
         private async void DialogUpdate()
         {
@@ -553,27 +547,22 @@ namespace APOD
             {
                 UpdateInAMin = true;
                 await Task.Delay(TimeSpan.FromSeconds(63.63));
-                //CheckForMandatoryUpdates();
                 DialogUpdate();
             }
             if (resultDialog == ContentDialogResult.Secondary) { InstallUpdatesAsync(); }
         }
         private async void InstallUpdatesAsync()
         {
-            //UpdateInAMin = false;
             StoreContext updateManager = StoreContext.GetDefault();
             IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
-            // Save app state here
-            //WriteSettings();
+            // You can save app state here
             IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> installOperation =
                 //updateManager.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
                 updateManager.TrySilentDownloadAndInstallStorePackageUpdatesAsync(updates);
             StorePackageUpdateResult result = await installOperation.AsTask();
-            //UpdateInstalling = true;
             if (UpdateInstalling)
             {
                 // Close the application
-                //WriteSettings();
                 DialogExit();
                 await Task.Delay(TimeSpan.FromSeconds(21.3));
                 App.Current.Exit();
