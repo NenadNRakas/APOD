@@ -1,5 +1,6 @@
 ﻿using AdaptiveCards;
 using Newtonsoft.Json.Linq;
+using Microsoft.Toolkit.Uwp.Notifications;
 using System;
 using System.Threading;
 using System.Collections.Generic;
@@ -12,6 +13,7 @@ using System.Runtime.Serialization;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using System.Windows;
+using Windows.ApplicationModel.Core;
 using Windows.ApplicationModel.UserActivities;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
@@ -43,7 +45,7 @@ namespace APOD
         const string EndpointURL = "https://api.nasa.gov/planetary/apod";
         // The objective of the NASA API portal is to make NASA data, including imagery, eminently accessible to application developers. 
         const string DesignerURL = "https://aicloudptyltd.business.site";
-        private const int imageDownloadLimit = 7;
+        private const int imageDownloadLimit = 11;
         // A count of images downloaded today.
         private int imageCountToday;
         // Application settings status
@@ -312,10 +314,11 @@ namespace APOD
                 switch (UpdateInstalling)
                 {
                     case false:
-                        DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually caused " +
-                            "by exceeding the image download limit of 33 images per day In addition if the following test error code is OK, " +
-                            "then everything is in good health and you can continue tomorrow. The NotFound would probably mean it's too early" +
-                            " and the service is still unavailable. Error Code: " + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
+                        DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually " +
+                            "caused by exceeding the image download limit of 50 images per day In addition if the following test " +
+                            "error code is OK, then everything is in good health and you can continue tomorrow. The NotFound would " +
+                            "probably mean it's too early and the service is still unavailable. Error Code: " + 
+                            $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
                         break;
                     case true:
                         if (imageCountToday < imageDownloadLimit)
@@ -325,9 +328,10 @@ namespace APOD
                         }
                         else
                         {
-                            DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually caused by exceeding the image download limit of " +
-                                "33 images per day In addition if the following test error code is OK, then everything is in good health and you can continue tomorrow. Error Code: "
-                                + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
+                            DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is " +
+                                "usually caused by exceeding the image download limit of 50 images per day In addition if the " +
+                                "following test error code is OK, then everything is in good health and you can continue tomorrow. " +
+                                "Error Code: " + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
                         }
                         break;
                 }
@@ -430,8 +434,8 @@ namespace APOD
             }
             else
             {
-                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. Common issue is that it's too early in " +
-                    "the day. The other is network problems. Error Code: " +
+                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. Common issue is that it's too " +
+                    "early in the day. The other is network problems. Error Code: " +
                     $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
             }
             SetupForTimelineAsync();
@@ -480,12 +484,12 @@ namespace APOD
                                          "                           " +
                                          "by Nenad Rakas";
             // Add Description to TextBox
-            DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day and count the " +
-                                      "daily limit of 50, that you can keep track of in the Timeline - which resets everyday! Use the Launch button " +
-                                      "to take you back in time when the service first began. You will automatically receive an image by selecting a " +
-                                      "different date in the drop down calendar menu. By deselecting the show on start up checkbox, you can save an " +
-                                      "image when restarting the application. Hovering over elements will guide you with tooltip popups. " +
-                                      "Credits: Special thank you to Microsoft and NASA.";
+            DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day " +
+                "and count the daily limit of 50, that you can keep track of in the Timeline - which resets everyday! Use the Launch " +
+                "button to take you back in time when the service first began. You will automatically receive an image by selecting a " +
+                "different date in the drop down calendar menu. By deselecting the show on start up checkbox, you can save an image " +
+                "when restarting the application. Hovering over elements will guide you with tooltip popups. Credits: Special thank " +
+                "you to Microsoft and NASA.";
         }
         private async void CheckForMandatoryUpdates()
         {
@@ -499,7 +503,7 @@ namespace APOD
                 {
                     if (u.Mandatory) 
                     {
-                        DownloadUpdatesAsync();
+                        //DownloadUpdatesAsync();
                     }
                 }
             }
@@ -509,7 +513,7 @@ namespace APOD
         {
             StoreContext updateManager = StoreContext.GetDefault();
             IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
-            if (updates.Count > 0)
+            /*if (updates.Count > 0)
             {
                 IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> downloadOperation =
                     updateManager.RequestDownloadStorePackageUpdatesAsync(updates);
@@ -524,7 +528,7 @@ namespace APOD
                     // Update was downloaded, add logic to request install
                     DialogUpdate();
                 }
-            }
+            }*/
             DialogUpdate(); // Only for testing.
         }
         private async void DialogUpdate()
@@ -569,7 +573,8 @@ namespace APOD
                 // Close the application
                 DialogExit();
                 await Task.Delay(TimeSpan.FromSeconds(33.33));
-                App.Current.Exit();
+                //App.Current.Exit();
+                ApplicationReboot();
             }
             // Handle error cases here using StorePackageUpdateResult from above
         }
@@ -582,6 +587,27 @@ namespace APOD
                 "update feature and some small bug fixes. See you in a jiffy. Good bye!"
             };
             var resultDialog = await exitDialog.ShowAsync();
+        }
+        private async void ApplicationReboot()
+        {
+            // Attempt restart, with arguments.
+            AppRestartFailureReason result =
+                await CoreApplication.RequestRestartAsync("-fastInit -level 1 -foo");
+
+            // Restart request denied, send a toast to tell the user to restart manually.
+            if (result == AppRestartFailureReason.NotInForeground
+                || result == AppRestartFailureReason.Other)
+            {
+                //SendToast("Please manually restart.");
+                App.Current.Exit();
+                // Requires Microsoft.Toolkit.Uwp.Notifications NuGet package version 7.0 or greater
+                new ToastContentBuilder()
+                    .AddArgument("action", "viewConversation")
+                    .AddArgument("conversationId", 9813)
+                    .AddText("A.i.POD Update Complete!")
+                    .AddText("Restart was unsuccessful, please start the application manually at your nearest conveniance.")
+                    .Show(); // Not seeing the Show() method? Make sure you have version 7.0, and if you're using .NET 6 (or later), then your TFM must be net6.0-windows10.0.17763.0 or greater
+            }
         }
     }
 }
