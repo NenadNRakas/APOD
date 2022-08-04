@@ -45,7 +45,7 @@ namespace APOD
         const string EndpointURL = "https://api.nasa.gov/planetary/apod";
         // The objective of the NASA API portal is to make NASA data, including imagery, eminently accessible to application developers. 
         const string DesignerURL = "https://aicloudptyltd.business.site";
-        private const int imageDownloadLimit = 11;
+        private const int imageDownloadLimit = 50;
         // A count of images downloaded today.
         private int imageCountToday;
         // Application settings status
@@ -316,8 +316,8 @@ namespace APOD
                     case false:
                         DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually " +
                             "caused by exceeding the image download limit of 50 images per day In addition if the following test " +
-                            "error code is OK, then everything is in good health and you can continue tomorrow. The NotFound would " +
-                            "probably mean it's too early and the service is still unavailable. Error Code: " + 
+                            "error code is OK, then everything is in good health and you can continue tomorrow. NotFound and BadRequest " +
+                            "would probably mean it's too early and the service is still unavailable for today. Error Code: " + 
                             $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
                         break;
                     case true:
@@ -485,9 +485,9 @@ namespace APOD
                                          "by Nenad Rakas";
             // Add Description to TextBox
             DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day " +
-                "and count the daily limit of 50, that you can keep track of in the Timeline - which resets everyday! Use the Launch " +
-                "button to take you back in time when the service first began. You will automatically receive an image by selecting a " +
-                "different date in the drop down calendar menu. By deselecting the show on start up checkbox, you can save an image " +
+                "and count the daily limit of 50, that you can keep track of in the Timeline - which resets every day! Use the Launch " +
+                "button to take you back in time when the service first began. You will automatically receive content by selecting a " +
+                "desired date in the drop-down calendar menu. By deselecting the show on startup checkbox, you can save an image " +
                 "when restarting the application. Hovering over elements will guide you with tooltip popups. Credits: Special thank " +
                 "you to Microsoft and NASA.";
         }
@@ -539,13 +539,11 @@ namespace APOD
             {
                 Title = "Required Updates",
                 Content = "Please be patient while it completes the process, it's mostly automated and the only cumbersome " +
-                "user requirement will be to decide when will you open the app again. Next time you start the application it will " +
-                "open where you left off (unless you've exceeded the daily image download count) and it won't cost you an additional " +
-                "image download. Should you choose to deliver it now the application will close automatically for the required " +
-                "installation. Alternatively, you can keep delaying it for a minute until you close the application manually in the " +
-                "top right corner of the window or change your choice to now on the next reminder. Installation will be done by the " +
-                "time the application quits, you can then start the application again or shut down your system and continue next " +
-                "time where you left off. ",
+                "user requirement could be to decide when will you open the app again. Next application start will open the state " +
+                "where you left off (unless you've exceeded the daily image download count of 50), it won't cost you an additional " +
+                "image download. Should you choose to deliver it now the application will restart automatically for the required " +
+                "installation. Alternatively, you can keep delaying it for a minute until you change your choice to now on the " +
+                "following reminder.",
                 PrimaryButtonText = "In a min.",
                 SecondaryButtonText = "Now!",
                 DefaultButton = ContentDialogButton.Primary
@@ -568,45 +566,49 @@ namespace APOD
                 //updateManager.RequestDownloadAndInstallStorePackageUpdatesAsync(updates);
                 updateManager.TrySilentDownloadAndInstallStorePackageUpdatesAsync(updates);
             StorePackageUpdateResult result = await installOperation.AsTask();
+            // Handle error cases here using StorePackageUpdateResult from above
             if (UpdateInstalling)
             {
-                // Close the application
                 DialogExit();
                 await Task.Delay(TimeSpan.FromSeconds(33.33));
-                //App.Current.Exit();
-                ApplicationReboot();
+                if (result.OverallState == StorePackageUpdateState.Completed)
+                {
+                    // Close the application
+                    //App.Current.Exit();
+                    ApplicationReboot();
+                }
             }
-            // Handle error cases here using StorePackageUpdateResult from above
         }
         private async void DialogExit()
         {
             ContentDialog exitDialog = new ContentDialog()
             {
                 Title = "Processing Updates",
-                Content = "The application will close shortly to complete the installation... This version carries an in app guided " +
-                "update feature and some small bug fixes. See you in a jiffy. Good bye!"
+                Content = "The application will restart shortly to complete the installation... Should the process be unsuccessful " +
+                "due to application being out of focus or minimized, you will get a notification that can help you start up the " +
+                "app by clicking on the message or you can do it your own way at your nearest convenience. This version " +
+                "carries an in app guided update feature and some small bug fixes. See you in a jiffy. Good bye!"
             };
             var resultDialog = await exitDialog.ShowAsync();
         }
         private async void ApplicationReboot()
         {
+            int conversationID = 9813;
             // Attempt restart, with arguments.
-            AppRestartFailureReason result =
-                await CoreApplication.RequestRestartAsync("-fastInit -level 1 -foo");
-
+            AppRestartFailureReason result = await CoreApplication.RequestRestartAsync("-fastInit -level 1 -foo");
             // Restart request denied, send a toast to tell the user to restart manually.
-            if (result == AppRestartFailureReason.NotInForeground
-                || result == AppRestartFailureReason.Other)
+            if (result == AppRestartFailureReason.NotInForeground || result == AppRestartFailureReason.Other)
             {
                 //SendToast("Please manually restart.");
                 App.Current.Exit();
                 // Requires Microsoft.Toolkit.Uwp.Notifications NuGet package version 7.0 or greater
                 new ToastContentBuilder()
                     .AddArgument("action", "viewConversation")
-                    .AddArgument("conversationId", 9813)
+                    .AddArgument("conversationId", conversationID)
                     .AddText("A.i.POD Update Complete!")
-                    .AddText("Restart was unsuccessful, please start the application manually at your nearest conveniance.")
-                    .Show(); // Not seeing the Show() method? Make sure you have version 7.0, and if you're using .NET 6 (or later), then your TFM must be net6.0-windows10.0.17763.0 or greater
+                    .AddText("Restart was unsuccessful, using this notification you can start the application manually at your " +
+                             "nearest conveniance.")
+                    .Show(); // With .NET 6 (or later), your TFM must be net6.0-windows10.0.17763.0 or greater
             }
         }
     }
