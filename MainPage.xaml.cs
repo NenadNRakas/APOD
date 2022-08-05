@@ -73,8 +73,6 @@ namespace APOD
         private static bool UpdatePending = false;
         private static bool UpdateInstalling = false;
         private static bool UpdateInAMin = false;
-        //Object SUI;
-
         private ApplicationDataContainer GetLocalSettings()
         {
             return localSettings;
