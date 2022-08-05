@@ -503,17 +503,16 @@ namespace APOD
                 {
                     if (u.Mandatory) 
                     {
-                        //DownloadUpdatesAsync();
+                        DownloadUpdatesAsync();
                     }
                 }
             }
-            DownloadUpdatesAsync(); // Only for testing.
         }
         private async void DownloadUpdatesAsync()
         {
             StoreContext updateManager = StoreContext.GetDefault();
             IReadOnlyList<StorePackageUpdate> updates = await updateManager.GetAppAndOptionalStorePackageUpdatesAsync();
-            /*if (updates.Count > 0)
+            if (updates.Count > 0)
             {
                 IAsyncOperationWithProgress<StorePackageUpdateResult, StorePackageUpdateStatus> downloadOperation =
                     updateManager.RequestDownloadStorePackageUpdatesAsync(updates);
@@ -528,8 +527,7 @@ namespace APOD
                     // Update was downloaded, add logic to request install
                     DialogUpdate();
                 }
-            }*/
-            DialogUpdate(); // Only for testing.
+            }
         }
         private async void DialogUpdate()
         {
