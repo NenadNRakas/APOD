@@ -196,7 +196,7 @@ namespace APOD
             // The text here should be treated as a title for this activity, and should be unique to this app.
             UserActivity userActivity = await channel.GetOrCreateUserActivityAsync("APOD-UWP");
             // Populate required properties: DisplayText and ActivationUri are required.
-            userActivity.VisualElements.DisplayText = "[@.i.]™ POD Timeline activities";
+            userActivity.VisualElements.DisplayText = "A.i.POD Timeline activities";
             // The name in the ActivationUri must match the name in the protocol setting in the manifest file (except for the "://" part).
             userActivity.ActivationUri = new Uri("aicloud://");
             // Build the Adaptive Card from a JSON string.
@@ -327,7 +327,8 @@ namespace APOD
             }
             else
             {
-                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day: " +
+                DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. Common issue is that it's too " +
+                    "early in the day. The other is network problems. Error Code: " +
                     $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
             }
             SetupForTimelineAsync();
@@ -361,12 +362,12 @@ namespace APOD
                                          "                           " +
                                          "by Nenad Rakas";
             // Add Description to TextBox
-            DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day and count the " +
-                                      "daily limit of 50, that you can keep track of in the Timeline - which resets everyday! Use the Launch button " +
-                                      "to take you back in time when the service first began. You will automatically receive an image by selecting a " +
-                                      "different date in the drop down calendar menu. By deselecting the show on start up checkbox, you can save an " +
-                                      "image when restarting the application. Hovering over elements will guide you with tooltip popups. " +
-                                      "Credits: Special thank you to Microsoft and NASA.";
+            DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day " +
+                "and count the daily limit of 50, that you can keep track of in the Timeline - which resets every day! Use the Launch " +
+                "button to take you back in time when the service first began. You will automatically receive content by selecting a " +
+                "desired date in the drop-down calendar menu. By deselecting the show on startup checkbox, you can save an image " +
+                "when restarting the application. Hovering over elements will guide you with tooltip popups. Credits: Special thank " +
+                "you to Microsoft and NASA.";
         }
     }
 }
