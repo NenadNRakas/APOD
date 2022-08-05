@@ -7,7 +7,7 @@
         <Identity
           Name="35526.i.A.i.POD"
           Publisher="CN=54DD3B1B-2017-43C1-93C6-4D73E5BFC7E8"
-          Version="1.0.1.0" />
+          Version="1.0.0.0" />
         <mp:PhoneIdentity PhoneProductId="0f7a1f8a-db8a-4781-bb18-b10fe4de4723" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
         <Properties>
           <DisplayName>A.i.POD</DisplayName>
