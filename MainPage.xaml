@@ -15,7 +15,6 @@
             <GradientStop Color="Black" Offset="0.442"/>
         </LinearGradientBrush>
     </Page.Background>
-
     <Grid RequestedTheme="Dark" 
           LostFocus="Grid_LostFocus" BorderBrush="White" BorderThickness="0,2,0,0">
         <CalendarDatePicker x:Name="MonthCalendar" 
@@ -27,24 +26,39 @@
                             FocusVisualPrimaryBrush="{x:Null}" 
                             Width="240" 
                             ToolTipService.ToolTip="Alternatively you might opt for a self selected images of the day!"/>
-        <Button x:Name="LaunchButton" 
-                Content="Launch" 
-                Margin="10,49,0,0" 
+        <Button x:Name="feedBackButton" 
+                FontFamily="Segoe MDL2 Assets" 
+                Content="&#xE939;" 
+                HorizontalAlignment="Left" 
                 VerticalAlignment="Top" 
-                Click="LaunchButton_Click" 
+                Visibility="Collapsed" 
+                Margin="10,10,0,0" 
+                Width="71" 
+                Height="71" 
+                Click="feedBackButton_Click" 
+                ToolTipService.ToolTip="Send us your thoughts using your favorite channel, via Feedback Hub!" 
                 Background="RoyalBlue" 
-                BorderBrush="#FFFBF8F8" 
-                Width="240" 
-                ToolTipService.ToolTip="You can start your journey back in time with APOD Project's Launch Date on 16th June 1995"/>
+                BorderBrush="White"/>
         <Button x:Name="AboutButton" 
                 Content="About" 
-                Margin="10,10,0,0" 
+                Margin="88,10,0,0" 
                 VerticalAlignment="Top" 
                 Click="AboutButton_Click" 
                 Background="RoyalBlue" 
                 BorderBrush="#FFFBF8F8" 
-                Width="240" 
+                Width="162" 
+                Height="32"
                 ToolTipService.ToolTip="Should you be interested in learning more about us at [@.i.]™"/>
+        <Button x:Name="LaunchButton" 
+                Content="Launch" 
+                Margin="88,49,0,0" 
+                VerticalAlignment="Top" 
+                Click="LaunchButton_Click" 
+                Background="RoyalBlue" 
+                BorderBrush="#FFFBF8F8" 
+                Width="162" 
+                Height="32"
+                ToolTipService.ToolTip="You can start your journey back in time with APOD Project's Launch Date on 16th June 1995"/>
         <CheckBox x:Name="LimitRangeCheckBox" 
                   Content="Limit date range to current year." 
                   Margin="10,165,0,0" 
