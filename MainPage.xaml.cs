@@ -157,6 +157,10 @@ namespace APOD
             // Create the container for the local settings.
             localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
             this.InitializeComponent();
+            if (Microsoft.Services.Store.Engagement.StoreServicesFeedbackLauncher.IsSupported())
+            {
+                this.feedBackButton.Visibility = Visibility.Visible;
+            }
             // Set the maximum date to today, and the minimum date to the date APOD was launched.
             MonthCalendar.MinDate = launchDate;
             MonthCalendar.MaxDate = DateTime.Today;
@@ -259,37 +263,37 @@ namespace APOD
             _currentActivity?.Dispose();
             _currentActivity = userActivity.CreateSession();
         }
+        private async void feedBackButton_Click(object sender, RoutedEventArgs e)
+        {
+            var launcher = Microsoft.Services.Store.Engagement.StoreServicesFeedbackLauncher.GetDefault();
+            await launcher.LaunchAsync();
+        }
+        private void AboutButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Bring View to Visible
+            WebView1.Visibility = Visibility.Visible;
+            // Nevigate to site resource 
+            WebView1.Navigate(new Uri(DesignerURL));
+            // Add Copyright to TextBox
+            ImageCopyrightTextBox.Text = "©  (2018 - Present) " +
+                                         "                           " +
+                                         "an [@.i.]™ Production " +
+                                         "                           " +
+                                         "by Nenad Rakas";
+            // Add Description to TextBox
+            DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day " +
+                "and count the daily limit of 50, that you can keep track of in the Timeline - which resets every day! Use the Launch " +
+                "button to take you back in time when the service first began. You will automatically receive content by selecting a " +
+                "desired date in the drop-down calendar menu. By deselecting the show on startup checkbox, you can save an image " +
+                "when restarting the application. Hovering over elements will guide you with tooltip popups. Credits: Special thank " +
+                "you to Microsoft and NASA.";
+        }
         private void LaunchButton_Click(object sender, RoutedEventArgs e)
         {
             // Make sure the full range of dates is available.
             LimitRangeCheckBox.IsChecked = false;
             // This will not load up the image, just sets the calendar to the APOD launch date.
             MonthCalendar.Date = launchDate;
-        }
-        private void ShowTodaysImageCheckBox_OnChecked(object sender, RoutedEventArgs e)
-        {
-            // Update the settings and refresh the cards
-            ShowTodaysImageCheckBox.IsChecked = true;
-            imageAutoLoad = "Yes";
-            SetupForTimelineAsync();
-        }
-        private void ShowTodaysImageCheckBox_OnUnchecked(object sender, RoutedEventArgs e)
-        {
-            // Update the settings and refresh the cards
-            ShowTodaysImageCheckBox.IsChecked = false;
-            imageAutoLoad = "No";
-            SetupForTimelineAsync();
-        }
-        private void LimitRangeCheckBox_Checked(object sender, RoutedEventArgs e)
-        {
-            // Set the calendar minimum date to the first of the current year.
-            var firstDayOfThisYear = new DateTime(DateTime.Today.Year, 1, 1);
-            MonthCalendar.MinDate = firstDayOfThisYear;
-        }
-        private void LimitRangeCheckBox_Unchecked(object sender, RoutedEventArgs e)
-        {
-            // Set the calendar minimum date to the launch of the APOD program.
-            MonthCalendar.MinDate = launchDate;
         }
         private void MonthCalendar_DateChanged(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
         {
@@ -336,6 +340,31 @@ namespace APOD
                         break;
                 }
             }
+        }
+        private void ShowTodaysImageCheckBox_OnChecked(object sender, RoutedEventArgs e)
+        {
+            // Update the settings and refresh the cards
+            ShowTodaysImageCheckBox.IsChecked = true;
+            imageAutoLoad = "Yes";
+            SetupForTimelineAsync();
+        }
+        private void ShowTodaysImageCheckBox_OnUnchecked(object sender, RoutedEventArgs e)
+        {
+            // Update the settings and refresh the cards
+            ShowTodaysImageCheckBox.IsChecked = false;
+            imageAutoLoad = "No";
+            SetupForTimelineAsync();
+        }
+        private void LimitRangeCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            // Set the calendar minimum date to the first of the current year.
+            var firstDayOfThisYear = new DateTime(DateTime.Today.Year, 1, 1);
+            MonthCalendar.MinDate = firstDayOfThisYear;
+        }
+        private void LimitRangeCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            // Set the calendar minimum date to the launch of the APOD program.
+            MonthCalendar.MinDate = launchDate;
         }
         private bool IsSupportedFormat(string photoURL)
         {
@@ -470,26 +499,6 @@ namespace APOD
             localSettings.Values[SettingShowOnStartup] = ShowTodaysImageCheckBox.IsChecked.ToString();
             localSettings.Values[SettingLimitRange] = LimitRangeCheckBox.IsChecked.ToString();
             localSettings.Values[SettingImageCountToday] = imageCountToday.ToString();
-        }
-        private void AboutButton_Click(object sender, RoutedEventArgs e)
-        {
-            // Bring View to Visible
-            WebView1.Visibility = Visibility.Visible;
-            // Nevigate to site resource 
-            WebView1.Navigate(new Uri(DesignerURL));
-            // Add Copyright to TextBox
-            ImageCopyrightTextBox.Text = "©  (2018 - Present) " +
-                                         "                           " +
-                                         "an [@.i.]™ Production " +
-                                         "                           " +
-                                         "by Nenad Rakas";
-            // Add Description to TextBox
-            DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day " +
-                "and count the daily limit of 50, that you can keep track of in the Timeline - which resets every day! Use the Launch " +
-                "button to take you back in time when the service first began. You will automatically receive content by selecting a " +
-                "desired date in the drop-down calendar menu. By deselecting the show on startup checkbox, you can save an image " +
-                "when restarting the application. Hovering over elements will guide you with tooltip popups. Credits: Special thank " +
-                "you to Microsoft and NASA.";
         }
         private async void CheckForMandatoryUpdates()
         {
