@@ -179,6 +179,10 @@ namespace APOD
             // Create the container for the local settings.
             localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
             this.InitializeComponent();
+            if (Microsoft.Services.Store.Engagement.StoreServicesFeedbackLauncher.IsSupported())
+            {
+                this.feedBackButton.Visibility = Visibility.Visible;
+            }
             // Set the maximum date to today, and the minimum date to the date APOD was launched.
             MonthCalendar.MinDate = launchDate;
             MonthCalendar.MaxDate = DateTime.Today;
@@ -285,12 +289,92 @@ namespace APOD
             _currentActivity?.Dispose();
             _currentActivity = userActivity.CreateSession();
         }
+        private async void feedBackButton_Click(object sender, RoutedEventArgs e)
+        {
+            var launcher = Microsoft.Services.Store.Engagement.StoreServicesFeedbackLauncher.GetDefault();
+            await launcher.LaunchAsync();
+        }
+        private void AboutButton_Click(object sender, RoutedEventArgs e)
+        {
+            _clicks += 1;
+            string noUpdate = "Update Unavailable";
+            if (_clicks == 0) { UpdateTextBlock.Text = noUpdate; }
+            if (_clicks == 1) { UpdateProcessing = true; GetEasyUpdates(); } else UpdateProcessing = false;
+            if (_clicks == 2) { UpdateDownloading = true; DownloadUpdatesAsync(); } else UpdateDownloading = false;
+            if (_clicks == 3) { UpdateInstalling = true; InstallUpdatesAsync(); } else UpdateInstalling = false;
+            //if (_clicks == 4) { UpdatePending = true; CheckForMandatoryUpdates(); } else UpdatePending = false;
+            if (_clicks == 5) { _clicks = 0; UpdateTextBlock.Text = noUpdate; }
+            // Bring View to Visible
+            WebView1.Visibility = Visibility.Visible;
+            // Nevigate to site resource 
+            WebView1.Navigate(new Uri(DesignerURL));
+            // Add Copyright to TextBox
+            ImageCopyrightTextBox.Text = "©  (2018 - Present) " +
+                                         "                           " +
+                                         "an [@.i.]™ Production " +
+                                         "                           " +
+                                         "by Nenad Rakas";
+            // Add Description to TextBox
+            DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day " +
+                "and count the daily limit of 50, that you can keep track of in the Timeline - which resets every day! Use the Launch " +
+                "button to take you back in time when the service first began. You will automatically receive content by selecting a " +
+                "desired date in the drop-down calendar menu. By deselecting the show on startup checkbox, you can save an image " +
+                "when restarting the application. Hovering over elements will guide you with tooltip popups. Credits: Special thank " +
+                "you to Microsoft and NASA.";
+        }
         private void LaunchButton_Click(object sender, RoutedEventArgs e)
         {
             // Make sure the full range of dates is available.
             LimitRangeCheckBox.IsChecked = false;
             // This will not load up the image, just sets the calendar to the APOD launch date.
             MonthCalendar.Date = launchDate;
+        }
+        private void MonthCalendar_DateChanged(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
+        {
+            // Build the date parameter string for the date selected, or the last date if a range is specified.
+            DateTimeOffset dt = (DateTimeOffset)MonthCalendar.Date;
+
+            selectedDate = $"{dt.Year.ToString()}-{dt.Month.ToString("00")}-{dt.Day.ToString("00")}";
+            string apiNasa = $"TZ6ay3nXkgGqVPMlWbrxYArpggcdyqSCjR7ZVeim";
+            string URLParams = $"?date={selectedDate}&api_key={apiNasa}";
+            var client = new HttpClient();
+            // Populate the Http client appropriately.
+            client.BaseAddress = new Uri(EndpointURL);
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            // The critical call: sends a GET request with the appropriate parameters.
+            HttpResponseMessage response = client.GetAsync(URLParams).Result;
+            if (imageCountToday < imageDownloadLimit)
+            {
+                // Make Duplication clearing
+                _ = RetrievePhoto(GetImageCountToday());
+            }
+            else
+            {
+                switch (UpdateInstalling)
+                {
+                    case false:
+                        DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually " +
+                            "caused by exceeding the image download limit of 50 images per day In addition if the following test " +
+                            "error code is OK, then everything is in good health and you can continue tomorrow. NotFound and BadRequest " +
+                            "would probably mean it's too early and the service is still unavailable for today. Error Code: " +
+                            $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
+                        break;
+                    case true:
+                        if (imageCountToday < imageDownloadLimit)
+                        {
+                            // Make Duplication clearing
+                            _ = RetrievePhoto(GetImageCountToday() - 1);
+                        }
+                        else
+                        {
+                            DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is " +
+                                "usually caused by exceeding the image download limit of 50 images per day In addition if the " +
+                                "following test error code is OK, then everything is in good health and you can continue tomorrow. " +
+                                "Error Code: " + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
+                        }
+                        break;
+                }
+            }
         }
         private void ShowTodaysImageCheckBox_OnChecked(object sender, RoutedEventArgs e)
         {
@@ -344,53 +428,6 @@ namespace APOD
             MonthCalendar.MinDate = launchDate;
             UpdateTextBlock.Text = "Date Unlimited.";
             UpdateTextBlock.HorizontalAlignment = HorizontalAlignment.Center;
-        }
-        private void MonthCalendar_DateChanged(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
-        {
-            // Build the date parameter string for the date selected, or the last date if a range is specified.
-            DateTimeOffset dt = (DateTimeOffset)MonthCalendar.Date;
-
-            selectedDate = $"{dt.Year.ToString()}-{dt.Month.ToString("00")}-{dt.Day.ToString("00")}";
-            string apiNasa = $"TZ6ay3nXkgGqVPMlWbrxYArpggcdyqSCjR7ZVeim";
-            string URLParams = $"?date={selectedDate}&api_key={apiNasa}";
-            var client = new HttpClient();
-            // Populate the Http client appropriately.
-            client.BaseAddress = new Uri(EndpointURL);
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            // The critical call: sends a GET request with the appropriate parameters.
-            HttpResponseMessage response = client.GetAsync(URLParams).Result;
-            if (imageCountToday < imageDownloadLimit)
-            {
-                // Make Duplication clearing
-                _ = RetrievePhoto(GetImageCountToday());
-            }
-            else
-            {
-                switch (UpdateInstalling)
-                {
-                    case false:
-                        DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is usually " +
-                            "caused by exceeding the image download limit of 50 images per day In addition if the following test " +
-                            "error code is OK, then everything is in good health and you can continue tomorrow. NotFound and BadRequest " +
-                            "would probably mean it's too early and the service is still unavailable for today. Error Code: " +
-                            $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
-                        break;
-                    case true:
-                        if (imageCountToday < imageDownloadLimit)
-                        {
-                            // Make Duplication clearing
-                            _ = RetrievePhoto(GetImageCountToday() - 1);
-                        }
-                        else
-                        {
-                            DescriptionTextBox.Text = "We were unable to retrieve the NASA picture for that day. This message is " +
-                                "usually caused by exceeding the image download limit of 50 images per day In addition if the " +
-                                "following test error code is OK, then everything is in good health and you can continue tomorrow. " +
-                                "Error Code: " + $"{response.StatusCode.ToString()} {response.ReasonPhrase}";
-                        }
-                        break;
-                }
-            }
         }
         private bool IsSupportedFormat(string photoURL)
         {
@@ -539,34 +576,6 @@ namespace APOD
             localSettings.Values[SettingShowOnStartup] = ShowTodaysImageCheckBox.IsChecked.ToString();
             localSettings.Values[SettingLimitRange] = LimitRangeCheckBox.IsChecked.ToString();
             localSettings.Values[SettingImageCountToday] = imageCountToday.ToString();
-        }
-        private void AboutButton_Click(object sender, RoutedEventArgs e)
-        {
-            _clicks += 1;
-            string noUpdate = "Update Unavailable";
-            if (_clicks == 0) { UpdateTextBlock.Text = noUpdate; }
-            if (_clicks == 1) { UpdateProcessing = true; GetEasyUpdates(); } else UpdateProcessing = false;
-            if (_clicks == 2) { UpdateDownloading = true; DownloadUpdatesAsync(); } else UpdateDownloading = false;
-            if (_clicks == 3) { UpdateInstalling = true; InstallUpdatesAsync(); } else UpdateInstalling = false;
-            //if (_clicks == 4) { UpdatePending = true; CheckForMandatoryUpdates(); } else UpdatePending = false;
-            if (_clicks == 5) { _clicks = 0; UpdateTextBlock.Text = noUpdate; }
-            // Bring View to Visible
-            WebView1.Visibility = Visibility.Visible;
-            // Nevigate to site resource 
-            WebView1.Navigate(new Uri(DesignerURL));
-            // Add Copyright to TextBox
-            ImageCopyrightTextBox.Text = "©  (2018 - Present) " +
-                                         "                           " +
-                                         "an [@.i.]™ Production " +
-                                         "                           " +
-                                         "by Nenad Rakas";
-            // Add Description to TextBox
-            DescriptionTextBox.Text = "Manual: Application is set by default to automatically load the latest presentation of the day " +
-                "and count the daily limit of 50, that you can keep track of in the Timeline - which resets every day! Use the Launch " +
-                "button to take you back in time when the service first began. You will automatically receive content by selecting a " +
-                "desired date in the drop-down calendar menu. By deselecting the show on startup checkbox, you can save an image " +
-                "when restarting the application. Hovering over elements will guide you with tooltip popups. Credits: Special thank " +
-                "you to Microsoft and NASA.";
         }
         private async void GetEasyUpdates()
         {
